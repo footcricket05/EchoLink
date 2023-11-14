@@ -1,94 +1,71 @@
-## Basic Raspberry Pi administration using  MQTT
+# EchoLink: Wireless Multi-Room Audio System For Home 🎶🏡
+
+Turn your home into a centralized audio haven with EchoLink, a DIY wireless multi-room audio system using Raspberry Pi's and affordable Bluetooth speakers. 🛠️
+
+## Basic Hardware 🚀
+Here's what you need to create your WiFi-based multi-room audio system:
+
+<table>
+  <tr>
+    <td>
+      <a href="http://amzn.to/2p9RVhQ"><img src="https://raw.githubusercontent.com/skalavala/skalavala.github.io/master/images/rpi3.jpg" alt="Raspberry Pi 3" /></a>
+    </td>
+    <td>
+      <a href="https://amzn.to/2VcAPMk"><img src="https://raw.githubusercontent.com/skalavala/skalavala.github.io/master/images/rpi-power.jpg" alt="Raspberry Pi 3 power Supply" /></a>
+    </td>    
+    <td>
+      <a href="https://amzn.to/2Vj7iAW"><img src="https://raw.githubusercontent.com/skalavala/skalavala.github.io/master/images/audio-cable.jpg" alt="3.5mm Audio Cable" /></a>
+    </td>
+    <td>
+      <a href="http://amzn.to/2pU2V1Y"><img src="https://raw.githubusercontent.com/skalavala/skalavala.github.io/master/images/bluetooth-speaker.jpg" alt="Bluetooth Speakers" /></a>
+    </td>
+  </tr>
+  <tr>
+    <td><a href="http://amzn.to/2p9RVhQ">Raspberry Pi 3</a></td>
+    <td><a href="https://amzn.to/2VcAPMk">RPi3 Power Supply</a></td>
+    <td><a href="https://amzn.to/2Vj7iAW">Audio Cable</a></td>
+    <td><a href="http://amzn.to/2pU2V1Y">Portable Speakers</a></td>
+  </tr>
+</table>
+
+## Software Components 🖥️
+Utilize Mopidy, Snapcast server, and client software for seamless audio distribution. Mopidy acts as the media player, and Snapcast facilitates broadcasting to multiple clients.
+
+1. [Install Mopidy](https://github.com/footcricket05/EchoLink/blob/main/Install%20Mopidy.md)
+2. [Install Snapcast Server](https://github.com/footcricket05/EchoLink/blob/main/Install%20Snapcast%20Server.md)
+3. [Install Snapcast client on each Raspberry Pi](https://github.com/footcricket05/EchoLink/blob/main/Install%20Snapcast%20Client.md)
+4. [Setting up PulseAudio](https://github.com/footcricket05/EchoLink/blob/main/Setup%20Pulseaudio.md)
+5. [Setting Snapcast Client Names](https://github.com/footcricket05/EchoLink/blob/main/Naming%20Clients.md)  
+6. **Optional** [Enable Airplay](https://github.com/footcricket05/EchoLink/blob/main/airplay.md)
+7. **Optional** [Setup Virtual Sound Card on VMWare ESXi 6.0 or Above](https://github.com/footcricket05/EchoLink/blob/main/vmware.md)
+
+All set! 🎉 Enjoy the whole house audio system, play music, connect to home assistant, make announcements, or even integrate with online radio channels!
+
+Optionally, install Mopidy Web Extensions for Spotify playlists. Integrate Mopidy with [Home Assistant (HA)](http://www.home-assistant.io) to view media players on the dashboard (Note: HA supports older versions of Snapcast server and clients).
+
+Good luck! 😊
+
+## Basic Raspberry Pi Administration using MQTT 🖥️🤖
 
 ![My Home Assistant View](https://raw.githubusercontent.com/skalavala/Multi-Room-Audio-Centralized-Audio-for-Home/master/images/image.png)
 
 ## Prelude
 
-I have one too many Raspberry Pis at home, and I always wanted an easy/lazy way to do some basic management without having to log into each of the Raspberry Pis. This will come in handy for situations where you want to restart all the Raspberry Pis at once, or simply want to restart snapcast client service on all the raspberry Pis...etc This will save you lots of time individually logging into each of the Raspberry Pi, and issue commands. Another big use of this is the automation, which you will find more in my [Github Repo](https://github.com/skalavala/smarthome) 
+Managing multiple Raspberry Pis at home can be challenging. This guide introduces a Python program that listens for specific commands via MQTT, providing an easy way to perform basic management tasks such as restarting services or checking system status. This is particularly useful for automation and remote administration.
 
-I wrote a basic python program that is deployed to each of the Raspberry Pi (this one happened to be deployed to a raspberry Pi that is  located in the Kitchen). The program runs as a `Daemon/Service`, it runs in thebackground, and automatically starts when the Raspberry Pi is restarted.
+### Prerequisites
 
-What this program does is, it listens for specific commands in MQTT on a topic, called "/server/pi_kitchen". Whatever the command is published to that topic, it executes it... not just any random command, ONLY pre-defined commands - like Restart Server, Shutdown Pi, Restart Snapcast Client, Give me the status of WiFi signal, Give me the stats of disk...etc. You can expand the command list or change to fit your needs.
+Make sure you have Python and the Paho MQTT library installed. Run the following command to install Paho MQTT:
 
-The same code is deployed to every Raspberry Pi, with the modified topic names - for ex, if the code is deployed to `pi_familyroom` Raspberry Pi, the topic name would be `pi_familyroom` instead of `pi_kitchen`.
-
-Not all commands return data - for ex: `Restart Raspberry Pi` just simply restarts, whereas `Get WiFi Info` returns WiFi data in a JSON format. That's pretty much all this code does. The power comes when you integrate this with other automation stuff.
-
-## Prerequisites
-You need Python and Python MQTT libraries for this code to work. To install `Paho MQTT` - python library for MQTT, run the following command.
-
-```
+```bash
 sudo pip install paho-mqtt
 ```
 
 ## Python Client Program
 
+Below is a Python program that runs as a daemon/service on each Raspberry Pi. It listens for predefined commands on an MQTT topic, allowing you to execute actions remotely.
+
 ```python
-import os
-import time
-import json
-import subprocess
-import paho.mqtt.client as mosquitto
-
-# MQTT Server Address and Port
-MQTT_SERVER = "192.168.1.xxx"
-MQTT_SERVER_PORT = 1883
-
-# MQTT User name and Password
-MQTT_USERNAME = "mosquitto"
-MQTT_PASSWORD = "xxx"
-
-# MQTT Topic Names
-MQTT_TOPIC = "/server/pi_kitchen"
-MQTT_WIFI_TOPIC = "/wifi/pi_kitchen"
-MQTT_DISK_TOPIC = "/disk/pi_kitchen"
-
-# create a new MQTT Client Object
-mqttc = mosquitto.Mosquitto()
-
-# OnConnect Callback
-######################################
-def on_connect(mosq, userdata, flags, rc):
-    print("Connected with return code: " + str(rc))
-
-# OnMessage Callback
-######################################
-def on_message(mosq, userdata, msg):
-    print(msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
-    if (str(msg.payload) == "CMD_RESTART_SNAPCLIENT"):
-        os.system('sudo systemctl restart snapclient')
-    elif(str(msg.payload) == "CMD_REBOOT_PI"):
-        os.system('sudo shutdown -r now')
-    elif(str(msg.payload) == "CMD_SHUTDOWN_PI"):
-        os.system('sudo shutdown now')
-    elif(str(msg.payload) == "CMD_REPORT_WIFI_DETAILS"):
-        try:
-            data = {}
-            return_value = subprocess.check_output("iwconfig wlan0 | grep -i signal", shell=True)
-            return_value = return_value.strip()
-            str_list = filter(None,  return_value.split(' '))
-            data['Link Quality'] = str_list[1].split('=')[1]
-            data['Signal Level'] = str_list[3].split('=')[1]
-            mosq.publish(MQTT_WIFI_TOPIC, payload=json.dumps(data), qos=0, retain=False)
-        except subprocess.CalledProcessError:
-            print("Failed to run the command: iwconfig wlan0 | grep -i signal")
-    elif(str(msg.payload) == "CMD_REPORT_DISK_DETAILS"):
-        try:
-            data = {}
-            return_value = subprocess.check_output("df -h | grep /dev/root", shell=True)
-            return_value = return_value.strip()
-            str_list = filter(None,  return_value.split(' '))
-            data['File System'] = str_list[0]
-            data['Size'] = str_list[1]
-            data['Used'] = str_list[2]
-            data['Available'] = str_list[3]
-            data['% Used'] = str_list[4]
-            mosq.publish(MQTT_DISK_TOPIC, payload=json.dumps(data), qos=0, retain=False)
-        except subprocess.CalledProcessError:
-            print("Failed to run the command: df -h | grep /dev/root")
-    else:
-        print("Unknown command")
-
 # OnSubscribe Callback
 ######################################
 def on_subscribe(mosq, obj, mid, granted_qos):
@@ -105,7 +82,7 @@ mqttc.on_connect = on_connect
 mqttc.on_subscribe = on_subscribe
 
 # Uncomment below line to enable debug/console messages
-#mqttc.on_log = on_log
+# mqttc.on_log = on_log
 
 # Connect to MQTT using the username/password set above
 mqttc.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
@@ -123,78 +100,74 @@ while rc == 0:
 print("MQTT Return Code: " + str(rc))
 ```
 
-### Note: If you copy the file, make sure you change MQTT Server IP, Port, Username and Password and any other hard coded stuff. 
+### Note: Update the MQTT server details and any other hardcoded values.
 
-## Running as Service
-To run the python program as a service on Raspberry Pi, you need to create a file  I name this as `raspi-client.service` in `/etc/systemd/system` folder.
+## Running as a Service
 
-Run the following command to create that file:
-```
-sudo nano /etc/systemd/system/raspi-client.service
-```
+1. **Create Service File:**
 
-Once you are in the nano editor or your favorite editor, add the following contents, save and exit.
+   Run the following command to create a service file:
 
-```
-[Unit]
-Description=Raspberry Pi MQTT Command Listener
-After=network.target
-Requires=network.target
+   ```bash
+   sudo nano /etc/systemd/system/raspi-client.service
+   ```
 
-[Service]
-ExecStart=/usr/bin/python /home/pi/pi_mqtt_cmds.py
-Restart=on-failure
-RestartSec=5
+   Add the following contents, save, and exit:
 
-[Install]
-WantedBy=multi-user.target
-```
+   ```ini
+   [Unit]
+   Description=Raspberry Pi MQTT Command Listener
+   After=network.target
+   Requires=network.target
 
-MAKE SURE YOU CHECK THE FILE NAME AND PATH... in my case, I named the python file as `pi_mqtt_cmds.py`, and it is located in `/home/pi/` folder, and the Python runtime is at `/usr/bin/python`.
+   [Service]
+   ExecStart=/usr/bin/python /home/pi/pi_mqtt_cmds.py
+   Restart=on-failure
+   RestartSec=5
 
-To check the location of your python executable, run `which python` command. THat should give you the full path.
+   [Install]
+   WantedBy=multi-user.target
+   ```
 
+2. **Reload Daemon Config:**
 
-After saving the contents, make sure you reload the daemon config by running the code. This option is better than restarting RPi.
+   Reload the daemon config:
 
-```
-sudo systemctl --system daemon-reload
-```
+   ```bash
+   sudo systemctl --system daemon-reload
+   ```
 
-Make sure you enable the service that was just created by running the command
-```
-sudo systemctl enable raspi-client
-```
+3. **Enable and Start Service:**
 
-Then you can start the python program as "Service" using the following command
-```
-sudo systemctl start raspi-client
-```
+   Enable the service:
 
-Optionally, you can restart and check status using the following commands. To restart, run this command:
-```
-sudo systemctl restart raspi-client
-```
+   ```bash
+   sudo systemctl enable raspi-client
+   ```
 
-To check the status, run the following command:
-```
-sudo systemctl status raspi-client
-```
+   Start the service:
 
-Now that you have a python program on your Raspberry Pi, that connects to the MQTT and executes commands, it is time to test the code. Go to your MQTT console, and publish a message on the topic specified in the code. Make sure the command is EXACTLY one of these:
+   ```bash
+   sudo systemctl start raspi-client
+   ```
 
-`CMD_RESTART_SNAPCLIENT` -> Restarts Snapcast client running on the RPi
-`CMD_REBOOT_PI` -> Reboots Pi
-`CMD_SHUTDOWN_PI` -> Shutsdown the Pi
-`CMD_REPORT_WIFI_DETAILS` -> Responds back with WiFi information (check /wifi/pi_xxx topic)
-`CMD_REPORT_DISK_DETAILS` -> Gives you some stats about Disk (check /disk/pi_xxx topic)
+4. **Optional Commands:**
 
+   - Restart Service: `sudo systemctl restart raspi-client`
+   - Check Status: `sudo systemctl status raspi-client`
 
-Now that you have a base framework, you can modify the commands, add/remove and change topic names, whatever suits your needs. 
+## Testing
 
-If you check my github repo, I have a package [https://github.com/skalavala/smarthome/blob/master/packages/pi_admin.yaml](https://github.com/skalavala/smarthome/blob/master/packages/pi_admin.yaml) that shows you how to run commands and show WiFi and Disk information and have automations based on the data... If your RPi is running out of disk space, you can get an alert, of if the WiFi signal is too weak... or anything you like! 
+Now that the service is running, test it by publishing commands to the specified MQTT topic. Examples of commands include:
 
-I also like to point out that there are many wayc of achieving the same. This is just one simple way :)
+- `CMD_RESTART_SNAPCLIENT`: Restarts Snapcast client.
+- `CMD_REBOOT_PI`: Reboots the Raspberry Pi.
+- `CMD_SHUTDOWN_PI`: Shuts down the Raspberry Pi.
+- `CMD_REPORT_WIFI_DETAILS`: Responds with WiFi information.
+- `CMD_REPORT_DISK_DETAILS`: Provides disk usage statistics.
 
-Good luck!
+Modify and expand these commands based on your requirements. 
 
+**Note:** There are various ways to achieve similar results; this is just one approach.
+
+Good luck with your Raspberry Pi administration and automation journey! 🚀🤖
