@@ -1,25 +1,50 @@
-## Setting up Custom Snapcast Client Names
+## Setting up Custom Snapcast Client Names 🎉
 
-After setting up snapcast clients, they automatically connect to the server - as long as bth server and clients are in the same network/subnet. When a snapcast client gets connected to the snapcast server, the server automatically assigns "defaul"t names to each client. Those default names can be changed by editing the following file on the Raspberry Pi that is running Snapcast Server.
+After successfully setting up Snapcast clients, they automatically connect to the server with default names assigned by the server. However, you might want to personalize these names to easily identify each client. Follow the steps below to set custom names for Snapcast clients:
 
-First, you need to stop Snapcast Server, otherwise the setting will be overridden by the server.
+1. **Stop Snapcast Server:**
 
-```
-sudo service snapserver stop
-```
+    Before making changes, ensure that the Snapcast Server is stopped to prevent any conflicts with the new configurations.
 
-```
-vi /var/lib/snapcast/server.json
-```
+    ```bash
+    sudo service snapserver stop
+    ```
 
-Change the names of each client in the JSON file: look for path `config` -> `name`
+2. **Edit the Snapcast Server Configuration File:**
 
-Start snapserver after making changes:
+    Use a text editor to open the Snapcast Server configuration file.
 
-```
-sudo service snapserver start
-```
+    ```bash
+    sudo vi /var/lib/snapcast/server.json
+    ```
 
-The clients will automatically connect when the server is available.
+3. **Modify Client Names:**
 
-[Back to home page](README.md)
+    In the JSON file, locate the path `config` -> `name` and change the names of each client to your desired custom names.
+
+    Example:
+    ```json
+    "config": {
+        "name": "🏠-living-room-server",
+        "stream": {
+            ...
+        },
+        "groups": [
+            ...
+        ]
+    }
+    ```
+
+4. **Save the Changes:**
+
+    Save the changes to the configuration file.
+
+5. **Start Snapcast Server:**
+
+    Restart the Snapcast Server to apply the new configurations.
+
+    ```bash
+    sudo service snapserver start
+    ```
+
+    The clients will automatically reconnect. 🔄
