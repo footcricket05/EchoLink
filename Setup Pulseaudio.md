@@ -1,89 +1,113 @@
-## Setup PulseAudio
+## Setup PulseAudio for 🎵 Raspberry Pi Audio Bliss
 
-You need to set up Pulse Audio in every Raspberry Pi that plays music to the connected speaker. Set up PulseAudio by default in every Raspberry Pi as my initial set up.
+Ensure a harmonious audio experience by setting up PulseAudio on each Raspberry Pi connected to your speakers. Make PulseAudio your default audio setup with the following steps:
 
-To install the necessary files, run the following command first
-```
-sudo apt-get install pulseaudio pulseaudio-module-zeroconf alsa-utils avahi-daemon -y
-```
+1. **Install Required Files:**
+   
+   Run the command below to install the necessary PulseAudio files:
 
-To enable ALSA:
-```
-sudo modprobe snd-bcm2835                      # load module for single boot
-echo "snd-bcm2835" | sudo tee -a /etc/modules  # load module for persistance
-```
+   ```bash
+   sudo apt-get install pulseaudio pulseaudio-module-zeroconf alsa-utils avahi-daemon -y
+   ```
 
-To set up networking, modify the default pulse audio settings file by running the following command:
+2. **Enable ALSA:**
+   
+   Enable ALSA by running the following commands:
 
-```
-sudo vi /etc/pulse/default.pa
-```
+   ```bash
+   sudo modprobe snd-bcm2835                    # load module for a single boot
+   echo "snd-bcm2835" | sudo tee -a /etc/modules # load module for persistence
+   ```
 
-and uncomment the two lines lines
+3. **Modify PulseAudio Settings:**
+   
+   Edit the PulseAudio settings file:
 
-```
-load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.0.0/16
-load-module module-zeroconf-publish
-```
-while you are in that file, remove or comment the line:
-```
-load-module module-suspend-on-idle
-```
-This prevents PulseAudio from sending the audio hardware to sleep.
+   ```bash
+   sudo vi /etc/pulse/default.pa
+   ```
 
-To start the pulseaudio server, run:
-```
-pulseaudio -D
-```
+   Uncomment the lines:
 
-You should be able to test that it works by playing a wav file with aplay (sudo apt-get install pulseaudio-utils), and also over the network by selecting the sink in your system's sound control panel.
+   ```bash
+   load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1;192.168.0.0/16
+   load-module module-zeroconf-publish
+   ```
 
-You can change the default audio output to 3.5mm jack. 1 is 3.5 jack, 2 is HDMI and 0 is auto
-```
-amixer cset numid=3 1
-```
+   Remove or comment the line:
 
-Also - make sure the volume is set to high to begin with. The volume can be changed via the UI in the mopidy when playing music.
+   ```bash
+   load-module module-suspend-on-idle
+   ```
 
-Run the following command to set volume in UI
-```
-alsamixer
-```
-or 
+   This prevents PulseAudio from sending the audio hardware to sleep.
 
-```
-amixer set 'PCM' 100% unmute
-```
+4. **Start PulseAudio Server:**
+   
+   Start the PulseAudio server with:
 
-or
+   ```bash
+   pulseaudio -D
+   ```
 
-```
-amixer set 'Master' 100% unmute
-```
+   Test it by playing a wav file using aplay or select the sink in your system's sound control panel.
 
-That's it! You have just enabled and configured Pulse Audio driver, and your Raspberry Pi is ready to play audio through the sound card.
+5. **Change Default Audio Output:**
+   
+   Set the default audio output to the 3.5mm jack:
 
-## Troubleshooting
+   ```bash
+   amixer cset numid=3 1
+   ```
 
-### Is your Pulse Audio skipping the audio?
+6. **Adjust Volume:**
+   
+   Ensure the volume is set to a suitable level:
+
+   ```bash
+   alsamixer
+   ```
+
+   Or, adjust the volume with:
+
+   ```bash
+   amixer set 'PCM' 100% unmute
+   ```
+
+   Or:
+
+   ```bash
+   amixer set 'Master' 100% unmute
+   ```
+
+### Troubleshooting 🛠️
+
+#### Audio Skipping?
 
 In /etc/pulse/default.pa, replace the line:
 
-```
+```bash
 load-module module-hal-detect
 ```
+
 with:
-```
+
+```bash
 load-module module-hal-detect tsched=0 
 ```
-Or:
 
+Or, replace:
+
+```bash
 load-module module-udev-detect
-with:
 ```
+
+with:
+
+```bash
 load-module module-udev-detect tsched=0 
 ```
 
-If you are running into issues, yu may want to visit [https://fedoraproject.org/wiki/How_to_debug_PulseAudio_problems](https://fedoraproject.org/wiki/How_to_debug_PulseAudio_problems)
+If issues persist, refer to [How to debug PulseAudio problems](https://fedoraproject.org/wiki/How_to_debug_PulseAudio_problems).
 
-[Back to home page](README.md)
+[Back to home page](https://github.com/footcricket05/EchoLink)
